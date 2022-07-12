@@ -257,7 +257,6 @@ initClock = do
   }
 
 
-
 -- TODO : Change the OFFSET in ClockState - change stream, dont care about previous state
 -- updateClockOffsetState :: State ClockState ()
 -- updateClockOffsetState = do
