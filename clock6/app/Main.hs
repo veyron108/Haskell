@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Main where
 
 import Control.Concurrent
@@ -7,17 +9,18 @@ import Control.Monad
 import Data.List
 import Data.Time.LocalTime
 import Data.Time.Format
+import Data.Time.Clock
+import Data.Time.Calendar
 import System.Console.ANSI
 import System.IO
 import Data.Fixed
 import System.Exit
 import System.Directory.Internal.Prelude (exitFailure)
 
-    -------------------------------------------------------------------
--- NUMBER STRINGS
--- each bigNum is 10 col x 8 row characters
--- Notes: manytools.org/hacker-tools/ascii-banner for numbers
 
+-------------------------------------------------------------------
+-- NUMBER STRINGS
+-- bigNum is 10 col x 8 row characters
 bigNum :: Int -> [String]
 bigNum 0 =
     [" .d8888b. ",
@@ -188,6 +191,11 @@ data ClockState = ClockState {
   offset :: Minutes 
 } deriving Show
 
+data CalendarState = CalendarState { 
+  asCalList :: [String], 
+  date :: (Integer, Int, Int)
+} deriving Show
+
 
 -- Animate Vertical a List of Strings
 drawVAnim :: Int -> [String] -> [String]
@@ -198,12 +206,13 @@ drawVAnim n (x : xs)
 drawVAnim _ _  = [] 
 
 
--- Repeat 
-repeatTimes 0 _ = return ()
-repeatTimes n thisAction =
+-- Repeat IO action -- redundant as I could probably can use replicateM_ ?
+repeatIOAction :: Int -> IO() -> IO()
+repeatIOAction 0 _ = return ()
+repeatIOAction n thisAction =
  do
   thisAction
-  repeatTimes (n-1) thisAction
+  repeatIOAction (n-1) thisAction
 
 
 -- Get tuple of 10's and 1's and make List
@@ -264,12 +273,18 @@ getClockStateString ClockState { asList = a, timeOfDay = b, offset = c } = a
 getClockStateOffset :: ClockState -> Minutes
 getClockStateOffset ClockState { asList = a, timeOfDay = b, offset = c } = c
 
+getCalendarDate :: CalendarState -> (Integer, Int, Int)
+getCalendarDate CalendarState { asCalList = a, date = b } = b
 
 drawClockState :: State ClockState String 
 drawClockState =
   get >>= \cs ->
     return $ drawClock (getClockStateTime cs)                           -- use getter i.e. TimeOfDay from ClockState
 
+-- drawCalendarState :: State CalendarState String 
+-- drawCalendarState =
+--   get >>= \cs ->
+--     return $ drawCalendar (getCalendarZoneNow cs)                           -- use getter i.e. TimeOfDay from ClockState
 
 -- Initialize ClockState to 00:00:00, current localtime and no offset
 initClock :: IO ClockState
@@ -284,6 +299,19 @@ initClock = do
   }
 
 
+-- Initialize CalendarState to date on local system
+initCalendar :: IO CalendarState
+initCalendar = do 
+  now <- getCurrentTime
+  timezone <- getCurrentTimeZone
+  let zoneNow = utcToLocalTime timezone now
+  let (year, month, day) = toGregorian $ localDay zoneNow
+  return $ CalendarState {
+     asCalList = concat $ join [[bigNum day], [spacer], [bigNum month]]
+    ,date      = (year, month, day)
+  }
+
+
 -- TODO : Change the OFFSET in ClockState - change stream, dont care about previous state
 -- updateClockOffsetState :: State ClockState ()
 -- updateClockOffsetState = do
@@ -295,7 +323,8 @@ initClock = do
 -- TODO : Change the TIMEOFDAY in ClockState
 -- updateClockTimeState :: TimeOfDay -> IO ClockState 
 -- updateClockTimeState timeOfDay = do
---     put (ClockState { timeOfDay = timeOfDay } ) 
+--     put (ClockState { timeOfDay = timeOfDay } )  ??
+
 
 
 -------------------------------------------------------------------
@@ -335,18 +364,20 @@ main = do
   hSetEcho stdin False                                                -- ensure the character isn't echoed back to the terminal. 
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
   
-  forM_ [0..10] (\ i -> do                                            -- show the title by animating it vertically
+  forM_ [1..10] (\ i -> do                                            -- show the title by animating it vertically
     setCursorPosition 0 0 
     threadDelay (10 ^ 5)
     putStrLn $ concat $ drawVAnim i title
     )
 
-  clockState <- initClock                                             -- set the initial state
+  clockState <- initClock                                             -- set the initial clock state
+  calendarState <- initCalendar                                       -- set the initial calendar state
+
                                                                       -- putStrLn $ drawClock $ getClockStateTime clockState
   setCursorPosition 10 0 
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green] 
   putStrLn $ evalState drawClockState clockState                      -- Note evalState :: State s a -> s -> a
-
+        
 
   setCursorPosition 20 0
   putStrLn "===== INSTRUCTIONS ====="
@@ -384,9 +415,9 @@ main = do
                 putStrLn "Exit Clock"
                 showCursor
                 exitFailure
-        'v' -> do                                 -- Dump the current ClockState to screen
-                setCursorPosition 20 0
-                print "work on this"
+        'v' -> do                                 -- Dump the clockState/calendar to screen
+                setCursorPosition 25 0
+                print calendarState
 
         -- TODO: Implement offsets
         -- 'l' -> do                              -- Local server time
