@@ -13,10 +13,9 @@ import Data.Fixed
 import System.Exit
 import System.Directory.Internal.Prelude (exitFailure)
 
-
--------------------------------------------------------------------
+    -------------------------------------------------------------------
 -- NUMBER STRINGS
--- each bigNum is 10 x 8 characters
+-- each bigNum is 10 col x 8 row characters
 -- Notes: manytools.org/hacker-tools/ascii-banner for numbers
 
 bigNum :: Int -> [String]
@@ -162,7 +161,18 @@ colonOff = ["          ",
 
 -- must have a \n at the end of each row on the final time string
 eol :: [String]
-eol = ["\n","\n","\n","\n","\n","\n","\n","\n"]   
+eol = ["\n","\n","\n","\n","\n","\n","\n","\n"]
+
+
+title :: [String]
+title = ["888    888                   888               888 888       .d8888b.  888                   888      \n" 
+        ,"888    888                   888               888 888      d88P  Y88b 888                   888      \n" 
+        ,"888    888                   888               888 888      888    888 888                   888      \n" 
+        ,"8888888888  8888b.  .d8888b  888  888  .d88b.  888 888      888        888  .d88b.   .d8888b 888  888 \n" 
+        ,"888    888     ^88b 88K      888 .88P d8P  Y8b 888 888      888        888 d88^^88b d88P^    888 .88P \n" 
+        ,"888    888 .d888888 ^Y8888b. 888888K  88888888 888 888      888    888 888 888  888 888      888888K  \n" 
+        ,"888    888 888  888      X88 888 ^88b Y8b.     888 888      Y88b  d88P 888 Y88..88P Y88b.    888 ^88b \n"
+        ,"888    888 ^Y888888  88888P' 888  888  ^Y8888  888 888       ^Y8888P^  888  ^Y88P^   ^Y8888P 888  888 \n"]
 
 
 -------------------------------------------------------------------
@@ -177,6 +187,23 @@ data ClockState = ClockState {
   timeOfDay :: TimeOfDay,
   offset :: Minutes 
 } deriving Show
+
+
+-- Animate Vertical a List of Strings
+drawVAnim :: Int -> [String] -> [String]
+drawVAnim 0 [] = []
+drawVAnim n (x : xs) 
+  | n > 0 = x : drawVAnim (n - 1) xs 
+  | otherwise  = []
+drawVAnim _ _  = [] 
+
+
+-- Repeat 
+repeatTimes 0 _ = return ()
+repeatTimes n thisAction =
+ do
+  thisAction
+  repeatTimes (n-1) thisAction
 
 
 -- Get tuple of 10's and 1's and make List
@@ -239,7 +266,7 @@ getClockStateOffset ClockState { asList = a, timeOfDay = b, offset = c } = c
 
 
 drawClockState :: State ClockState String 
-drawClockState = do
+drawClockState =
   get >>= \cs ->
     return $ drawClock (getClockStateTime cs)                           -- use getter i.e. TimeOfDay from ClockState
 
@@ -265,16 +292,22 @@ initClock = do
 --     return ()
 
 
+-- TODO : Change the TIMEOFDAY in ClockState
+-- updateClockTimeState :: TimeOfDay -> IO ClockState 
+-- updateClockTimeState timeOfDay = do
+--     put (ClockState { timeOfDay = timeOfDay } ) 
+
+
 -------------------------------------------------------------------
 -- THREADS and EVENTS 
 -- See final class notes on 05.07.22 
 
-data Event = TickEvent | KeyEvent Char deriving Show 
+data Event = SecondsEvent | KeyEvent Char deriving Show 
 
 ticker :: Chan Event -> IO () 
 ticker chan = forever $ do 
   threadDelay (10 ^ 6)                                                          -- every 1 second is 10^6 microseconds
-  writeChan chan TickEvent
+  writeChan chan SecondsEvent
 
 input :: Chan Event -> IO () 
 input chan = forever $ do  
@@ -299,23 +332,26 @@ main = do
   noBuffering
   clearScreen
   hideCursor                                        
-  hSetEcho stdin False                                                -- ensure the character isn't echoed back to the terminal.
-
-  setCursorPosition 0 0  
+  hSetEcho stdin False                                                -- ensure the character isn't echoed back to the terminal. 
+  setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
+  
+  forM_ [0..10] (\ i -> do                                            -- show the title by animating it vertically
+    setCursorPosition 0 0 
+    threadDelay (10 ^ 5)
+    putStrLn $ concat $ drawVAnim i title
+    )
 
   clockState <- initClock                                             -- set the initial state
                                                                       -- putStrLn $ drawClock $ getClockStateTime clockState
-
+  setCursorPosition 10 0 
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green] 
   putStrLn $ evalState drawClockState clockState                      -- Note evalState :: State s a -> s -> a
 
 
-  setCursorPosition 10 0
+  setCursorPosition 20 0
   putStrLn "===== INSTRUCTIONS ====="
   putStrLn "Press 'x' to quit"
   putStrLn "Press '1' to '3' to change to color"
-  putStrLn "Press 'l' for Local time"
-  putStrLn "Press 's' for Summer time (+1 hour)"
 
 
   chan <- newChan                                                     -- Channels and Events - see last class with fork.hs
@@ -325,18 +361,15 @@ main = do
   forever $ do 
     c <- readChan chan
     case c of 
+      
       -------- TICKER --------
-      TickEvent  -> do
-
-          -- TODO: change this to "put" the timeOfDay into ClockState rather than refresh terminal
-          
-          setCursorPosition 0 0 
+      SecondsEvent  -> do
 
           zonedTime <- getZonedTime  
           let timeOfDay = convertToTimeOfDay zonedTime
-          let newState = ClockState { asList = [], timeOfDay = timeOfDay, offset = 30 } 
-          --print newState
-          putStrLn $ evalState drawClockState newState 
+          let newClockState = ClockState { asList = [], timeOfDay = timeOfDay, offset = 0 }
+          setCursorPosition 10 0
+          putStrLn $ evalState drawClockState newClockState 
 
 
       -------- KEYEVENT --------
@@ -353,7 +386,7 @@ main = do
                 exitFailure
         'v' -> do                                 -- Dump the current ClockState to screen
                 setCursorPosition 20 0
-                print clockState
+                print "work on this"
 
         -- TODO: Implement offsets
         -- 'l' -> do                              -- Local server time
