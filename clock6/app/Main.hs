@@ -8,7 +8,6 @@ import Control.Monad.Trans.State
 import Control.Monad.IO.Class
 import Control.Monad
 import Data.List
-import Data.List.Split
 import Data.Time.LocalTime
 import Data.Time.Clock
 import Data.Time.Calendar
@@ -224,6 +223,12 @@ doubleDigits n = uncurry (++) ([bigNum a], [bigNum b])                    -- [St
 convertNestedListToString :: [[String]] -> String
 convertNestedListToString n = concat $ concat n
 
+-- split the time at the colons
+splitTime :: String -> [String]
+splitTime [] = [""]
+splitTime (c:cs) | c == ':'  = "" : more
+             | otherwise = (c : head more) : tail more
+    where more = splitTime cs
 
 -- NOT IN USE
 -- Convert from IO ZonedTime to TimeOfDay
@@ -310,7 +315,7 @@ getDayTime = do
     timezone <- getCurrentTimeZone                          -- eg AEST
     let zoneNow = utcToLocalTime timezone now'              -- eg 2022-07-14 03:24:41.7410000 ->Melb
     let timeOfDay = formatTime defaultTimeLocale "%H:%M:%S" zoneNow 
-    let [h, m, s] = splitOn ":" timeOfDay
+    let [h, m, s] = splitTime timeOfDay
     let hours   = stringToInt h
     let minutes = stringToInt m
     let seconds = stringToInt s
