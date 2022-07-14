@@ -54,6 +54,7 @@ executable clock6
         random,
         time ^>=1.9.3,
         transformers,
+        split,
         clock6
 
     hs-source-dirs:   app

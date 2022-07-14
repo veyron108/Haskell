@@ -7,15 +7,18 @@ import Control.Monad.Trans.State
 import Control.Monad.IO.Class
 import Control.Monad
 import Data.List
+import Data.List.Split
 import Data.Time.LocalTime
-import Data.Time.Format
 import Data.Time.Clock
 import Data.Time.Calendar
+import Data.Time.Format
 import System.Console.ANSI
 import System.IO
 import Data.Fixed
 import System.Exit
 import System.Directory.Internal.Prelude (exitFailure)
+import GHC.Base (VecElem(Int16ElemRep))
+
 
 
 -------------------------------------------------------------------
@@ -183,17 +186,13 @@ title = ["888    888                   888               888 888       .d8888b. 
 
 type Hours       = Int
 type Minutes     = Int
+type DayTime     = (Int, Int, Int)
 type App         = State ClockState
 
 data ClockState = ClockState { 
   asList :: [String], 
-  timeOfDay :: TimeOfDay,
-  offset :: Minutes 
-} deriving Show
-
-data CalendarState = CalendarState { 
-  asCalList :: [String], 
-  date :: (Integer, Int, Int)
+  timeOfDay :: DayTime,
+  offset :: Int
 } deriving Show
 
 
@@ -206,6 +205,7 @@ drawVAnim n (x : xs)
 drawVAnim _ _  = [] 
 
 
+-- NOT USED
 -- Repeat IO action -- redundant as I could probably can use replicateM_ ?
 repeatIOAction :: Int -> IO() -> IO()
 repeatIOAction 0 _ = return ()
@@ -244,6 +244,7 @@ convertPicoToInt = floor
 -- Manipulate the List of Strings so they appear horizontally by transposing
 -- Notes: Changed from own function to using transpose - forgot that was available earlier - doh!
 
+-- NOT USED
 -- colToRows :: [[a]] -> [[a]]
 -- colToRows ([]:_) = []
 -- colToRows r = map head r : colToRows (map tail r)
@@ -253,79 +254,57 @@ drawClockString x = convertNestedListToString $ transpose x   -- use transpose x
 
 
 -- i.e. Render Clock String using TimeOfDay as argument 
-drawClock :: TimeOfDay -> String
-drawClock timeObj = drawClockString output 
+drawClock :: DayTime -> String
+drawClock (h, m, s) = drawClockString output 
   where  
-    offset    = getClockStateOffset                                                     -- TimeOfDay has 3 constructors available
-    hours     = doubleDigits $ todHour timeObj                                          -- todHour :: Int
-    minutes   = doubleDigits $ todMin timeObj                                           -- todHour :: Int
-    seconds   = doubleDigits $ convertPicoToInt $ todSec timeObj                        -- todSec :: Pico 
+    hours     = doubleDigits h                                          
+    minutes   = doubleDigits m                                           
+    seconds   = doubleDigits s  
     output    = join [[starter], hours, [colonOn], minutes, [colonOn], seconds, [eol]]  -- "join" the Lists // using Control.Monad                                            
 
 
 -- getters
-getClockStateTime :: ClockState -> TimeOfDay
+getClockStateTime :: ClockState -> DayTime
 getClockStateTime ClockState { asList = a, timeOfDay = b, offset = c } = b
 
 getClockStateString :: ClockState -> [String]
 getClockStateString ClockState { asList = a, timeOfDay = b, offset = c } = a
 
-getClockStateOffset :: ClockState -> Minutes
+getClockStateOffset :: ClockState -> Int
 getClockStateOffset ClockState { asList = a, timeOfDay = b, offset = c } = c
 
-getCalendarDate :: CalendarState -> (Integer, Int, Int)
-getCalendarDate CalendarState { asCalList = a, date = b } = b
 
 drawClockState :: State ClockState String 
 drawClockState =
   get >>= \cs ->
     return $ drawClock (getClockStateTime cs)                           -- use getter i.e. TimeOfDay from ClockState
+                                                                       
 
--- drawCalendarState :: State CalendarState String 
--- drawCalendarState =
---   get >>= \cs ->
---     return $ drawCalendar (getCalendarZoneNow cs)                           -- use getter i.e. TimeOfDay from ClockState
+stringToInt :: String -> Int
+stringToInt x = if all (`elem` "0123456789") x
+                then read x :: Int
+                else 0
 
 -- Initialize ClockState to 00:00:00, current localtime and no offset
 initClock :: IO ClockState
 initClock = do
-  zonedTime <- getZonedTime                                                     -- getZonedTime :: IO ZonedTime
-  let timeOfDay = convertToTimeOfDay zonedTime                                  -- 
-  let offsetMinutes = 0
+  now <- getCurrentTime                       -- eg 2022-07-13 17:25:29.4547484 ->UTC
+  timezone <- getCurrentTimeZone              -- eg AEST
+  let zoneNow = utcToLocalTime timezone now   -- eg 2022-07-14 03:24:41.7410000 ->Melb
+  let timeOfDay = formatTime defaultTimeLocale "%l:%M:%S" zoneNow 
+  let [h, m, s] = splitOn ":" timeOfDay
+  let hours   = stringToInt h
+  let minutes = stringToInt m
+  let seconds = stringToInt s
+
   return $ ClockState {
      asList    = concat $ join [[bigNum 0], [spacer] ,[bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [eol]]
-    ,timeOfDay = timeOfDay
-    ,offset    = offsetMinutes
+    ,timeOfDay = (hours, minutes, seconds)
+    ,offset    = 0
   }
 
-
--- Initialize CalendarState to date on local system
-initCalendar :: IO CalendarState
-initCalendar = do 
-  now <- getCurrentTime
-  timezone <- getCurrentTimeZone
-  let zoneNow = utcToLocalTime timezone now
-  let (year, month, day) = toGregorian $ localDay zoneNow
-  return $ CalendarState {
-     asCalList = concat $ join [[bigNum day], [spacer], [bigNum month]]
-    ,date      = (year, month, day)
-  }
-
-
--- TODO : Change the OFFSET in ClockState - change stream, dont care about previous state
--- updateClockOffsetState :: State ClockState ()
--- updateClockOffsetState = do
---     ...
---     ...
---     return ()
-
-
--- TODO : Change the TIMEOFDAY in ClockState
--- updateClockTimeState :: TimeOfDay -> IO ClockState 
--- updateClockTimeState timeOfDay = do
---     put (ClockState { timeOfDay = timeOfDay } )  ??
-
-
+utcToUtc :: UTCTime -> UTCTime
+utcToUtc = addUTCTime (realToFrac 0)          -- get the offset from ClockState
 
 -------------------------------------------------------------------
 -- THREADS and EVENTS 
@@ -364,14 +343,14 @@ main = do
   hSetEcho stdin False                                                -- ensure the character isn't echoed back to the terminal. 
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
   
-  forM_ [1..10] (\ i -> do                                            -- show the title by animating it vertically
+  -- heading animation
+  forM_ [1..10] (\ i -> do                                            
     setCursorPosition 0 0 
     threadDelay (10 ^ 5)
     putStrLn $ concat $ drawVAnim i title
     )
 
   clockState <- initClock                                             -- set the initial clock state
-  calendarState <- initCalendar                                       -- set the initial calendar state
 
                                                                       -- putStrLn $ drawClock $ getClockStateTime clockState
   setCursorPosition 10 0 
@@ -383,6 +362,9 @@ main = do
   putStrLn "===== INSTRUCTIONS ====="
   putStrLn "Press 'x' to quit"
   putStrLn "Press '1' to '3' to change to color"
+  putStrLn "Press 'e' to change TimeZone to AEST - Melbourne, Sydney, Brisbane"
+  putStrLn "Press 'w' to change TimeZone to AWST - Perth"
+  putStrLn "Press 'c' to change TimeZone to ACST - Adelaide, Darwin"
 
 
   chan <- newChan                                                     -- Channels and Events - see last class with fork.hs
@@ -396,9 +378,18 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-          zonedTime <- getZonedTime  
-          let timeOfDay = convertToTimeOfDay zonedTime
-          let newClockState = ClockState { asList = [], timeOfDay = timeOfDay, offset = 0 }
+          now <- getCurrentTime                       -- eg 2022-07-13 17:25:29.4547484 ->UTC
+          let now' = utcToUtc now
+          timezone <- getCurrentTimeZone              -- eg AEST
+          let zoneNow = utcToLocalTime timezone now'   -- eg 2022-07-14 03:24:41.7410000 ->Melb
+          let timeOfDay = formatTime defaultTimeLocale "%l:%M:%S" zoneNow 
+          let [h, m, s] = splitOn ":" timeOfDay
+          let hours   = stringToInt h
+          let minutes = stringToInt m
+          let seconds = stringToInt s
+          let offset  = 0
+
+          let newClockState = ClockState { asList = [], timeOfDay = (hours, minutes, seconds), offset = offset }
           setCursorPosition 10 0
           putStrLn $ evalState drawClockState newClockState 
 
@@ -411,18 +402,28 @@ main = do
                 setSGR [SetColor Foreground Vivid Red]
         '3' -> do 
                 setSGR [SetColor Foreground Vivid Yellow]
-        'x' -> do                                 -- Exit Program
+        'x' -> do                                           -- Exit Program
                 putStrLn "Exit Clock"
                 showCursor
                 exitFailure
-        'v' -> do                                 -- Dump the clockState/calendar to screen
+        'v' -> do                                           -- Dump the test data to screen
                 setCursorPosition 25 0
-                print calendarState
+                now <- getCurrentTime                       -- eg 2022-07-13 17:25:29.4547484 ->UTC
+                timezone <- getCurrentTimeZone              -- eg AEST
+                let zoneNow = utcToLocalTime timezone now   -- eg 2022-07-14 03:24:41.7410000 ->Melb
+                print now
 
         -- TODO: Implement offsets
-        -- 'l' -> do                              -- Local server time
-        --        updateClockOffsetState { offset = 0 }
-        -- 's' -> do                              -- SummerTime (add 1 hour) (offset = 60 minutes)
+        -- 'e' -> do                                        -- Local server time
+        --     let offset = 0
+        --     put ClockState{offset = offset}
+            
+        -- 'c' -> do
+        --     let offset = (-1800)
+        --     put ClockState{offset = offset}
+
+        -- 'w' -> do
+        --     let offset = (-7200)
+        --     put ClockState{offset = offset}
 
         _ -> putStr "" --putStr("Key : " ++ show [c])
-      

@@ -80,6 +80,16 @@
   (major1) == 1 && (major2) <  2 || \
   (major1) == 1 && (major2) == 2 && (minor) <= 1)
 #endif /* MIN_VERSION_random */
+/* package split-0.2.3.4 */
+#ifndef VERSION_split
+#define VERSION_split "0.2.3.4"
+#endif /* VERSION_split */
+#ifndef MIN_VERSION_split
+#define MIN_VERSION_split(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  2 || \
+  (major1) == 0 && (major2) == 2 && (minor) <= 3)
+#endif /* MIN_VERSION_split */
 /* package time-1.9.3 */
 #ifndef VERSION_time
 #define VERSION_time "1.9.3"
