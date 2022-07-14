@@ -404,12 +404,11 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-          -- TODO : we only want to "put" timeOfDay
-          setCursorPosition 10 0
-          dt <- getDayTime
-          let newClockState = ClockState { asList = [], timeOfDay = dt, offset = 0 }
-          putStrLn $ evalState drawClockState newClockState 
-
+        -- TODO : we only want to "put" timeOfDay
+        setCursorPosition 10 0
+        dt <- getDayTime
+        let newClockState = ClockState { asList = [], timeOfDay = dt, offset = 0 }
+        putStrLn $ evalState drawClockState newClockState 
 
       -------- KEYEVENT --------
       KeyEvent c -> case c of  
@@ -438,4 +437,5 @@ main = do
         --         evalState awstOffset
         --         print ""
                  
-        _ -> putStr "" --putStr("Key : " ++ show [c])
+        _  -> do 
+               return ()
