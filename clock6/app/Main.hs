@@ -205,7 +205,7 @@ drawVAnim n (x : xs)
 drawVAnim _ _  = [] 
 
 
--- NOT USED
+-- NO LONGER USED
 -- Repeat IO action -- redundant as I could probably can use replicateM_ ?
 repeatIOAction :: Int -> IO() -> IO()
 repeatIOAction 0 _ = return ()
@@ -234,6 +234,7 @@ convertToTimeOfDay obj = localTimeOfDay localtime                               
     localtime = zonedTimeToLocalTime obj                                          -- zonedTimeToLocalTime :: LocalTime
 
   
+-- NO LONGER USED
 -- Need to go from Data.Fixed.Pice E12 to Int
 -- Easiest way is to just floor to the nearest Int (downwards)
 -- Don't use round as sometimes "60" seconds is shown
@@ -299,12 +300,12 @@ initClock = do
 
   return $ ClockState {
      asList    = concat $ join [[bigNum 0], [spacer] ,[bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [eol]]
-    ,timeOfDay = (hours, minutes, seconds)
+    ,timeOfDay = (hours, minutes, seconds)    -- changed from TimeOfDay to tuple
     ,offset    = 0
   }
 
 utcToUtc :: UTCTime -> UTCTime
-utcToUtc = addUTCTime (realToFrac 0)          -- get the offset from ClockState
+utcToUtc = addUTCTime (realToFrac 0)          -- TODO: get the offset from ClockState
 
 -------------------------------------------------------------------
 -- THREADS and EVENTS 
@@ -378,18 +379,19 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-          now <- getCurrentTime                       -- eg 2022-07-13 17:25:29.4547484 ->UTC
-          let now' = utcToUtc now
-          timezone <- getCurrentTimeZone              -- eg AEST
-          let zoneNow = utcToLocalTime timezone now'   -- eg 2022-07-14 03:24:41.7410000 ->Melb
+          -- TODO: get offset from ClockState
+          now <- getCurrentTime                         -- eg 2022-07-13 17:25:29.4547484 ->UTC
+          let now' = utcToUtc now                       -- changed the offset
+          timezone <- getCurrentTimeZone                -- eg AEST
+          let zoneNow = utcToLocalTime timezone now'    -- eg 2022-07-14 03:24:41.7410000 ->Melb
           let timeOfDay = formatTime defaultTimeLocale "%l:%M:%S" zoneNow 
           let [h, m, s] = splitOn ":" timeOfDay
           let hours   = stringToInt h
           let minutes = stringToInt m
           let seconds = stringToInt s
-          let offset  = 0
 
-          let newClockState = ClockState { asList = [], timeOfDay = (hours, minutes, seconds), offset = offset }
+          -- TODO : we only want to set timeOfDay
+          let newClockState = ClockState { asList = [], timeOfDay = (hours, minutes, seconds), offset = 0 }
           setCursorPosition 10 0
           putStrLn $ evalState drawClockState newClockState 
 
@@ -408,12 +410,9 @@ main = do
                 exitFailure
         'v' -> do                                           -- Dump the test data to screen
                 setCursorPosition 25 0
-                now <- getCurrentTime                       -- eg 2022-07-13 17:25:29.4547484 ->UTC
-                timezone <- getCurrentTimeZone              -- eg AEST
-                let zoneNow = utcToLocalTime timezone now   -- eg 2022-07-14 03:24:41.7410000 ->Melb
-                print now
+                print clockState
 
-        -- TODO: Implement offsets
+        -- TODO: Implement zones by updating offset within ClockState
         -- 'e' -> do                                        -- Local server time
         --     let offset = 0
         --     put ClockState{offset = offset}
