@@ -18,107 +18,100 @@ import System.IO
 import Data.Fixed
 import System.Exit
 import System.Directory.Internal.Prelude (exitFailure)
-import GHC.Base (VecElem(Int16ElemRep))
-import Data.Time (secondsToDiffTime)
-import System.Directory (getModificationTime)
-import Control.Monad.State (runState)
-
-
 
 -------------------------------------------------------------------
 -- NUMBER STRINGS
--- bigNum is 10 col x 8 row characters
 bigNum :: Int -> [String]
 bigNum 0 =
-    [" .d8888b. ",
-     "d88P  Y88b",
-     "888    888",
-     "888    888",
-     "888    888",
-     "888    888",
-     "Y88b  d88P",
-     " ^Y8888P^ "]
+    [" .d8888b.  ",
+     "d88P  Y88b ",
+     "888    888 ",
+     "888    888 ",
+     "888    888 ",
+     "888    888 ",
+     "Y88b  d88P ",
+     " ^Y8888P^  "]
 bigNum 1 =
-    ["   d888   ",
-     "  d8888   ",
-     "    888   ",
-     "    888   ",
-     "    888   ",
-     "    888   ",
-     "    888   ",
-     "  8888888 "]  
+    ["   d888    ",
+     "  d8888    ",
+     "    888    ",
+     "    888    ",
+     "    888    ",
+     "    888    ",
+     "    888    ",
+     "  8888888  "]  
 bigNum 2 =
-    [" .d8888b. ",
-     "d88P  Y88b",
-     "888    888",
-     "    .d88P ",
-     ".od888P^  ",
-     "d88P^     ",
-     "888^      ",
-     "8888888888"]
+    [" .d8888b.  ",
+     "d88P  Y88b ",
+     "888    888 ",
+     "    .d88P  ",
+     ".od888P^   ",
+     "d88P^      ",
+     "888^       ",
+     "8888888888 "]
 bigNum 3 =
-    [" .d8888b. ",
-     "d88P  Y88b",
-     "     .d88P",
-     "    8888^ ",
-     "     ^Y8b.",
-     "888    888",
-     "Y88b  d88P",
-     " ^Y888P^  "]
+    [" .d8888b.  ",
+     "d88P  Y88b ",
+     "     .d88P ",
+     "    8888^  ",
+     "     ^Y8b. ",
+     "888    888 ",
+     "Y88b  d88P ",
+     " ^Y888P^   "]
 bigNum 4 =
-    ["    d8888 ",
-     "   d8P888 ",
-     "  d8P 888 ",
-     " d8P  888 ",
-     "d8P   888 ",
-     "8888888888",
-     "      888 ",
-     "      888 "]
+    ["    d8888  ",
+     "   d8P888  ",
+     "  d8P 888  ",
+     " d8P  888  ",
+     "d8P   888  ",
+     "8888888888 ",
+     "      888  ",
+     "      888  "]
 bigNum 5 =
-    ["888888888 ",
-     "888       ",
-     "888       ",
-     "8888888b. ",
-     "     ^Y88b",
-     "       888",
-     "Y88b  d88P",
-     " ^Y8888P^ "]
+    ["888888888  ",
+     "888        ",
+     "888        ",
+     "8888888b.  ",
+     "     ^Y88b ",
+     "       888 ",
+     "Y88b  d88P ",
+     " ^Y8888P^  "]
 bigNum 6 =
-    [" .d8888b. ",
-     "d88P  Y88b",
-     "888       ",
-     "8888888b. ",
-     "888P ^Y88b",
-     "888    888",
-     "Y88b  d88P",
-     " ^Y8888P^ "]
+    [" .d8888b.  ",
+     "d88P  Y88b ",
+     "888        ",
+     "8888888b.  ",
+     "888P ^Y88b ",
+     "888    888 ",
+     "Y88b  d88P ",
+     " ^Y8888P^  "]
 bigNum 7 =
-    ["8888888888",
-     "      d88P",
-     "      d88P",
-     "    d88P  ",
-     "   d88P   ",
-     "  d88P    ",
-     " dBBP     ",
-     " dBBP     "]
+    ["8888888888 ",
+     "      d88P ",
+     "      d88P ",
+     "    d88P   ",
+     "   d88P    ",
+     "  d88P     ",
+     " dBBP      ",
+     " dBBP      "]
 bigNum 8 =
-    [" .d8888b. ",
-     "d88P  Y88b",
-     "Y88b. d88P",
-     " ^Y88888^ ",
-     ".d8P^^Y8b.",
-     "888    888",
-     "Y88b  d88P",
-     " ^Y8888P^ "]
+    [" .d8888b.  ",
+     "d88P  Y88b ",
+     "Y88b. d88P ",
+     " ^Y88888^  ",
+     ".d8P^^Y8b. ",
+     "888    888 ",
+     "Y88b  d88P ",
+     " ^Y8888P^  "]
 bigNum 9 =
-    [" .d8888b. ",
-     "d88P  Y88b",
-     "888    888",
-     "Y88b. d888",
-     " ^Y888P888",
-     "       888",
-     "Y88b  d88P",
-     " ^Y8888P^ "]
+    [" .d8888b.  ",
+     "d88P  Y88b ",
+     "888    888 ",
+     "Y88b. d888 ",
+     " ^Y888P888 ",
+     "       888 ",
+     "Y88b  d88P ",
+     " ^Y8888P^  "]
 bigNum _ = 
     ["          ",
      "          ",
@@ -150,24 +143,24 @@ spacer = [" ",
           " "]
 
 colonOn :: [String]
-colonOn  = ["          ",
-            "   d88b   ",
-            "   Y88P   ",
-            "          ",
-            "          ",
-            "   d8Bb   ",
-            "   Y88P   ",
-            "          "]
+colonOn  = ["        ",
+            "  d88b  ",
+            "  Y88P  ",
+            "        ",
+            "        ",
+            "  d8Bb  ",
+            "  Y88P  ",
+            "        "]
 
 colonOff :: [String]
-colonOff = ["          ",
-            "          ",
-            "          ",
-            "          ",
-            "          ",
-            "          ",
-            "          ",
-            "          "]
+colonOff = ["        ",
+            "        ",
+            "        ",
+            "        ",
+            "        ",
+            "        ",
+            "        ",
+            "        "]
 
 -- must have a \n at the end of each row on the final time string
 eol :: [String]
@@ -189,8 +182,10 @@ title = ["888    888                   888               888 888       .d8888b. 
 -- DATA TYPES
 
 type App         = State ClockState
+type Hours       = Int
+type Minutes     = Int
 type Seconds     = Int
-type DayTime     = (Int, Int, Int)                          -- changed from TimeOfDay to tuple in this revision
+type DayTime     = (Hours, Minutes, Seconds)                          -- changed from TimeOfDay to tuple in this revision
 
 data ClockState = ClockState { 
   asList    :: [String], 
@@ -210,17 +205,17 @@ drawVAnim _ _  = []
 
 -- NOT IN USE
 -- Repeat IO action -- redundant as I could probably can use replicateM_ ?
-repeatIOAction :: Int -> IO() -> IO()
-repeatIOAction 0 _ = return ()
-repeatIOAction n thisAction =
- do
-  thisAction
-  repeatIOAction (n-1) thisAction
+-- repeatIOAction :: Int -> IO() -> IO()
+-- repeatIOAction 0 _ = return ()
+-- repeatIOAction n thisAction =
+--  do
+--   thisAction
+--   repeatIOAction (n-1) thisAction
 
 
 -- Get tuple of 10's and 1's and make List
 doubleDigits :: Int -> [[String]]
-doubleDigits n = [bigNum a] ++ [spacer] ++ [bigNum b]                          -- [Strings] ++ [Strings] ++ [Strings] also works
+doubleDigits n = uncurry (++) ([bigNum a], [bigNum b])                    -- [Strings] ++ [Strings] ++ [Strings] also works
     where 
       (a, b) = n `divMod` 10                                                      -- divMod :: Integral a => a -> a -> (a, a)
 
@@ -230,19 +225,20 @@ convertNestedListToString :: [[String]] -> String
 convertNestedListToString n = concat $ concat n
 
 
+-- NOT IN USE
 -- Convert from IO ZonedTime to TimeOfDay
-convertToTimeOfDay :: ZonedTime -> TimeOfDay                                                     
-convertToTimeOfDay obj = localTimeOfDay localtime                                 -- localTimeOfDay :: TimeOfDay
-  where 
-    localtime = zonedTimeToLocalTime obj                                          -- zonedTimeToLocalTime :: LocalTime
+-- convertToTimeOfDay :: ZonedTime -> TimeOfDay                                                     
+-- convertToTimeOfDay obj = localTimeOfDay localtime                                 -- localTimeOfDay :: TimeOfDay
+--   where 
+--     localtime = zonedTimeToLocalTime obj                                          -- zonedTimeToLocalTime :: LocalTime
 
   
 -- NOT IN USE
 -- Need to go from Data.Fixed.Pice E12 to Int
 -- Easiest way is to just floor to the nearest Int (downwards)
 -- Don't use round as sometimes "60" seconds is shown
-convertPicoToInt :: Pico -> Int
-convertPicoToInt = floor 
+-- convertPicoToInt :: Pico -> Int
+-- convertPicoToInt = floor 
 
 
 -- Manipulate the List of Strings so they appear horizontally by transposing
@@ -265,7 +261,6 @@ drawClock (h, m, s) = drawClockString output
     minutes   = doubleDigits m                                           
     seconds   = doubleDigits s  
     output    = join [[starter], hours, [colonOn], minutes, [colonOn], seconds, [eol]]  -- "join" the Lists // using Control.Monad                                            
-
 
 -- NOT IN USE : getters 
 -- getClockStateTime :: ClockState -> DayTime
@@ -295,10 +290,9 @@ stringToInt x = if all (`elem` "0123456789") x
 initClock :: IO ClockState
 initClock = do
   dt <- getDayTime 
-  let (hours, minutes, seconds) = dt
   return $ ClockState {
-     asList    = concat $ join [[bigNum 0], [spacer] ,[bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [eol]]
-    ,timeOfDay = (hours, minutes, seconds)    -- changed from TimeOfDay to tuple
+     asList    = concat $ join [[bigNum 0],[bigNum 0], [colonOn], [bigNum 0], [bigNum 0], [colonOn], [bigNum 0], [bigNum 0], [eol]]
+    ,timeOfDay = dt    -- changed from TimeOfDay to tuple
     ,offset    = 0
   }
 
@@ -323,6 +317,7 @@ getDayTime = do
     return (hours, minutes, seconds)
 
 
+-- NOTES:
 -- type StateIO s   a = s -> IO (a, s)
 -- type StateT  s m a = s -> m  (a, s)
 
