@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
@@ -18,6 +19,8 @@ import Data.Fixed
 import System.Exit
 import System.Directory.Internal.Prelude (exitFailure)
 import GHC.Base (VecElem(Int16ElemRep))
+import Data.Time (secondsToDiffTime)
+import System.Directory (getModificationTime)
 
 
 
@@ -289,23 +292,32 @@ stringToInt x = if all (`elem` "0123456789") x
 -- Initialize ClockState to 00:00:00, current localtime and no offset
 initClock :: IO ClockState
 initClock = do
-  now <- getCurrentTime                       -- eg 2022-07-13 17:25:29.4547484 ->UTC
-  timezone <- getCurrentTimeZone              -- eg AEST
-  let zoneNow = utcToLocalTime timezone now   -- eg 2022-07-14 03:24:41.7410000 ->Melb
-  let timeOfDay = formatTime defaultTimeLocale "%l:%M:%S" zoneNow 
-  let [h, m, s] = splitOn ":" timeOfDay
-  let hours   = stringToInt h
-  let minutes = stringToInt m
-  let seconds = stringToInt s
-
+  dt <- getDayTime 
+  let (hours, minutes, seconds) = dt
   return $ ClockState {
      asList    = concat $ join [[bigNum 0], [spacer] ,[bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [colonOn], [bigNum 0], [spacer], [bigNum 0], [eol]]
     ,timeOfDay = (hours, minutes, seconds)    -- changed from TimeOfDay to tuple
     ,offset    = 0
   }
 
+
+-- TODO: Need to get the offset from ClockState which is changed by KeyEvent
 utcToUtc :: UTCTime -> UTCTime
-utcToUtc = addUTCTime (realToFrac 0)          -- TODO: get the offset from ClockState
+utcToUtc = addUTCTime (realToFrac 0)              
+
+
+getDayTime :: IO DayTime
+getDayTime = do
+    now <- getCurrentTime                                   -- eg 2022-07-13 17:25:29.4547484 ->UTC
+    let now' = utcToUtc now                                 -- changed the offset
+    timezone <- getCurrentTimeZone                          -- eg AEST
+    let zoneNow = utcToLocalTime timezone now'              -- eg 2022-07-14 03:24:41.7410000 ->Melb
+    let timeOfDay = formatTime defaultTimeLocale "%H:%M:%S" zoneNow 
+    let [h, m, s] = splitOn ":" timeOfDay
+    let hours   = stringToInt h
+    let minutes = stringToInt m
+    let seconds = stringToInt s
+    return (hours, minutes, seconds)
 
 -------------------------------------------------------------------
 -- THREADS and EVENTS 
@@ -315,7 +327,7 @@ data Event = SecondsEvent | KeyEvent Char deriving Show
 
 ticker :: Chan Event -> IO () 
 ticker chan = forever $ do 
-  threadDelay (10 ^ 6)                                                          -- every 1 second is 10^6 microseconds
+  threadDelay (10 ^ 6)                                       -- every 1 second is 10^6 microseconds
   writeChan chan SecondsEvent
 
 input :: Chan Event -> IO () 
@@ -341,7 +353,7 @@ main = do
   noBuffering
   clearScreen
   hideCursor                                        
-  hSetEcho stdin False                                                -- ensure the character isn't echoed back to the terminal. 
+  hSetEcho stdin False                                     -- ensure the character isn't echoed back to the terminal. 
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
   
   -- heading animation
@@ -380,15 +392,8 @@ main = do
       SecondsEvent  -> do
 
           -- TODO: get offset from ClockState
-          now <- getCurrentTime                         -- eg 2022-07-13 17:25:29.4547484 ->UTC
-          let now' = utcToUtc now                       -- changed the offset
-          timezone <- getCurrentTimeZone                -- eg AEST
-          let zoneNow = utcToLocalTime timezone now'    -- eg 2022-07-14 03:24:41.7410000 ->Melb
-          let timeOfDay = formatTime defaultTimeLocale "%l:%M:%S" zoneNow 
-          let [h, m, s] = splitOn ":" timeOfDay
-          let hours   = stringToInt h
-          let minutes = stringToInt m
-          let seconds = stringToInt s
+          dt <- getDayTime
+          let (hours, minutes, seconds) = dt
 
           -- TODO : we only want to set timeOfDay
           let newClockState = ClockState { asList = [], timeOfDay = (hours, minutes, seconds), offset = 0 }
