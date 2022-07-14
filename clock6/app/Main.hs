@@ -21,6 +21,7 @@ import System.Directory.Internal.Prelude (exitFailure)
 import GHC.Base (VecElem(Int16ElemRep))
 import Data.Time (secondsToDiffTime)
 import System.Directory (getModificationTime)
+import Control.Monad.State (runState)
 
 
 
@@ -187,15 +188,14 @@ title = ["888    888                   888               888 888       .d8888b. 
 -------------------------------------------------------------------
 -- DATA TYPES
 
-type Hours       = Int
-type Minutes     = Int
-type DayTime     = (Int, Int, Int)
 type App         = State ClockState
+type Seconds     = Int
+type DayTime     = (Int, Int, Int)                          -- changed from TimeOfDay to tuple in this revision
 
 data ClockState = ClockState { 
-  asList :: [String], 
+  asList    :: [String], 
   timeOfDay :: DayTime,
-  offset :: Int
+  offset    :: Seconds
 } deriving Show
 
 
@@ -208,7 +208,7 @@ drawVAnim n (x : xs)
 drawVAnim _ _  = [] 
 
 
--- NO LONGER USED
+-- NOT IN USE
 -- Repeat IO action -- redundant as I could probably can use replicateM_ ?
 repeatIOAction :: Int -> IO() -> IO()
 repeatIOAction 0 _ = return ()
@@ -237,7 +237,7 @@ convertToTimeOfDay obj = localTimeOfDay localtime                               
     localtime = zonedTimeToLocalTime obj                                          -- zonedTimeToLocalTime :: LocalTime
 
   
--- NO LONGER USED
+-- NOT IN USE
 -- Need to go from Data.Fixed.Pice E12 to Int
 -- Easiest way is to just floor to the nearest Int (downwards)
 -- Don't use round as sometimes "60" seconds is shown
@@ -248,7 +248,7 @@ convertPicoToInt = floor
 -- Manipulate the List of Strings so they appear horizontally by transposing
 -- Notes: Changed from own function to using transpose - forgot that was available earlier - doh!
 
--- NOT USED
+-- NOT IN USE
 -- colToRows :: [[a]] -> [[a]]
 -- colToRows ([]:_) = []
 -- colToRows r = map head r : colToRows (map tail r)
@@ -257,7 +257,7 @@ drawClockString :: [[String]] -> String
 drawClockString x = convertNestedListToString $ transpose x   -- use transpose x -- same thing!                   
 
 
--- i.e. Render Clock String using TimeOfDay as argument 
+-- i.e. Render Clock String using DayTime tuple as argument 
 drawClock :: DayTime -> String
 drawClock (h, m, s) = drawClockString output 
   where  
@@ -267,12 +267,12 @@ drawClock (h, m, s) = drawClockString output
     output    = join [[starter], hours, [colonOn], minutes, [colonOn], seconds, [eol]]  -- "join" the Lists // using Control.Monad                                            
 
 
--- getters
-getClockStateTime :: ClockState -> DayTime
-getClockStateTime ClockState { asList = a, timeOfDay = b, offset = c } = b
+-- NOT IN USE : getters 
+-- getClockStateTime :: ClockState -> DayTime
+-- getClockStateTime ClockState { asList = a, timeOfDay = b, offset = c } = b
 
-getClockStateString :: ClockState -> [String]
-getClockStateString ClockState { asList = a, timeOfDay = b, offset = c } = a
+-- getClockStateString :: ClockState -> [String]
+-- getClockStateString ClockState { asList = a, timeOfDay = b, offset = c } = a
 
 getClockStateOffset :: ClockState -> Int
 getClockStateOffset ClockState { asList = a, timeOfDay = b, offset = c } = c
@@ -281,13 +281,15 @@ getClockStateOffset ClockState { asList = a, timeOfDay = b, offset = c } = c
 drawClockState :: State ClockState String 
 drawClockState =
   get >>= \cs ->
-    return $ drawClock (getClockStateTime cs)                           -- use getter i.e. TimeOfDay from ClockState
-                                                                       
+    --return $ drawClock (getClockStateTime cs)         -- no longer need thsi getter
+    return $ drawClock (timeOfDay cs)                                                                  
+
 
 stringToInt :: String -> Int
 stringToInt x = if all (`elem` "0123456789") x
                 then read x :: Int
                 else 0
+
 
 -- Initialize ClockState to 00:00:00, current localtime and no offset
 initClock :: IO ClockState
@@ -301,9 +303,10 @@ initClock = do
   }
 
 
--- TODO: Need to get the offset from ClockState which is changed by KeyEvent
+-- TODO: Need to get the offset from ClockState
 utcToUtc :: UTCTime -> UTCTime
-utcToUtc = addUTCTime (realToFrac 0)              
+utcToUtc = addUTCTime (realToFrac offset)  
+  where offset = 0        
 
 
 getDayTime :: IO DayTime
@@ -318,6 +321,20 @@ getDayTime = do
     let minutes = stringToInt m
     let seconds = stringToInt s
     return (hours, minutes, seconds)
+
+
+-- type StateIO s   a = s -> IO (a, s)
+-- type StateT  s m a = s -> m  (a, s)
+
+
+awstOffset :: State ClockState ()
+awstOffset = do
+  cs@ClockState { offset = offset } <- get 
+  let ns = offset - 7200
+  put ( cs { offset = ns } )
+  return ()
+  
+
 
 -------------------------------------------------------------------
 -- THREADS and EVENTS 
@@ -357,20 +374,21 @@ main = do
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
   
   -- heading animation
-  forM_ [1..10] (\ i -> do                                            
+  forM_ [1..8] (\ i -> do                                            
     setCursorPosition 0 0 
     threadDelay (10 ^ 5)
     putStrLn $ concat $ drawVAnim i title
     )
 
+  threadDelay (10 ^ 6)
   clockState <- initClock                                             -- set the initial clock state
-
                                                                       -- putStrLn $ drawClock $ getClockStateTime clockState
   setCursorPosition 10 0 
   setSGR [ SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green] 
   putStrLn $ evalState drawClockState clockState                      -- Note evalState :: State s a -> s -> a
         
 
+  setSGR [ SetColor Foreground Vivid White]
   setCursorPosition 20 0
   putStrLn "===== INSTRUCTIONS ====="
   putStrLn "Press 'x' to quit"
@@ -378,7 +396,7 @@ main = do
   putStrLn "Press 'e' to change TimeZone to AEST - Melbourne, Sydney, Brisbane"
   putStrLn "Press 'w' to change TimeZone to AWST - Perth"
   putStrLn "Press 'c' to change TimeZone to ACST - Adelaide, Darwin"
-
+  setSGR [ SetColor Foreground Vivid Green]
 
   chan <- newChan                                                     -- Channels and Events - see last class with fork.hs
   forkIO $ ticker chan 
@@ -391,13 +409,10 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-          -- TODO: get offset from ClockState
-          dt <- getDayTime
-          let (hours, minutes, seconds) = dt
-
-          -- TODO : we only want to set timeOfDay
-          let newClockState = ClockState { asList = [], timeOfDay = (hours, minutes, seconds), offset = 0 }
+          -- TODO : we only want to "put" timeOfDay
           setCursorPosition 10 0
+          dt <- getDayTime
+          let newClockState = ClockState { asList = [], timeOfDay = dt, offset = 0 }
           putStrLn $ evalState drawClockState newClockState 
 
 
@@ -419,15 +434,13 @@ main = do
 
         -- TODO: Implement zones by updating offset within ClockState
         -- 'e' -> do                                        -- Local server time
-        --     let offset = 0
-        --     put ClockState{offset = offset}
+        --     ...
             
         -- 'c' -> do
-        --     let offset = (-1800)
-        --     put ClockState{offset = offset}
+        --     ...
 
         -- 'w' -> do
-        --     let offset = (-7200)
-        --     put ClockState{offset = offset}
-
+        --         evalState awstOffset
+        --         print ""
+                 
         _ -> putStr "" --putStr("Key : " ++ show [c])
