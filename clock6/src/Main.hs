@@ -34,9 +34,8 @@ data Event = SecondsEvent | KeyEvent Char deriving Show
 -------------------------------------------------------
 -- Helpers
 --
-utcToUtc :: UTCTime -> UTCTime
-utcToUtc = addUTCTime (realToFrac offset)  
-  where offset = 0                          -- changing this value is working fine
+utcToUtc :: Int -> UTCTime -> UTCTime
+utcToUtc offset = addUTCTime (realToFrac offset)                          -- changing this value is working fine
 
 stringToInt :: String -> Int
 stringToInt x = if all (`elem` "0123456789") x
@@ -52,11 +51,11 @@ splitTime (x : xs) | x == ':'  = "" : more
 -------------------------------------------------------
 -- Clock State
 --
-getDayTime :: IO DayTime
-getDayTime = do
+getDayTime :: Int -> IO DayTime
+getDayTime n = do
     now <- getCurrentTime                                     -- eg 2022-07-13 17:25:29.4547484 ->UTC
-    let now' = utcToUtc now                                   -- changed the offset
     timezone <- getCurrentTimeZone                            -- eg AEST
+    let now'      = utcToUtc n now                            -- changed the offset
     let zoneNow   = utcToLocalTime timezone now'              -- eg 2022-07-14 03:24:41.7410000 ->Melb
     let timeOfDay = formatTime defaultTimeLocale "%H:%M:%S" zoneNow 
     let [h, m, s] = splitTime timeOfDay
@@ -67,7 +66,7 @@ getDayTime = do
 
 initClockState :: IO ClockState 
 initClockState = do 
-  dt <- getDayTime
+  dt <- getDayTime 0
   return $ ClockState { timeOfDay = dt, offset = 0 }
 
 getAwst :: State Int String
@@ -183,7 +182,7 @@ main = do
   --   putStrLn $ concat $ drawVAnim i title
   --   )
 
-  chan <- newChan -- Channels and Events - see last class with fork.hs
+  chan <- newChan               -- Channels and Events - see last class with fork.hs
   forkIO $ ticker chan 
   forkIO $ input chan
 
@@ -194,10 +193,10 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-        -- TODO : we only want to "change" timeOfDay tuple
+        let offset = 0           -- TODO : need to "get" offset value out of ClockState        
         setCursorPosition 0 0
-        dt <- getDayTime
-        let theClockState = ClockState { timeOfDay = dt, offset = 30 }
+        dt <- getDayTime offset
+        let theClockState = ClockState { timeOfDay = dt, offset = offset }
         putStrLn $ evalState drawClockState theClockState 
 
       ------- KEY EVENTS -------
@@ -219,8 +218,16 @@ main = do
           clearFromCursorToScreenEnd
           exitFailure
 
-        'w' -> do 
+        'e' -> do 
+          -- TODO : need to "set" offset in ClockState to 0
+          return ()
           
+        'w' -> do 
+          -- TODO : need to "set" offset in ClockState to (-7200)
+          return ()
+
+        'c' -> do 
+          -- TODO : need to "set" offset in ClockState to (-1800)
           return ()
 
         _   -> do 
