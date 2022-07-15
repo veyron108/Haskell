@@ -15,7 +15,7 @@ import Data.Fixed
 import System.Exit
 import System.Directory.Internal.Prelude (exitFailure)
 
-import BigChars
+import BigNums
 
 
 type App         = State ClockState
@@ -168,6 +168,7 @@ main = do
   putStrLn "Press 'e' to change TimeZone to AEST - Melbourne, Sydney, Brisbane"
   putStrLn "Press 'w' to change TimeZone to AWST - Perth"
   putStrLn "Press 'c' to change TimeZone to ACST - Adelaide, Darwin"
+  putStrLn "Press 'a' to change TimeZone to NZST - Auckland NewZeland"
   setSGR [ SetColor Foreground Vivid Green]
   
   ics <- initClockState
@@ -228,6 +229,10 @@ main = do
 
         'c' -> do 
           -- TODO : need to "set" offset in ClockState to (-1800)
+          return ()
+
+        'a' -> do 
+          -- TODO : need to "set" offset in ClockState to (43200) - Pacific Auckland NZST
           return ()
 
         _   -> do 

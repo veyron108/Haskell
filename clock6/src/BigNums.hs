@@ -1,4 +1,4 @@
-module BigChars (
+module BigNums (
     bigNum, 
     starter, 
     spacer, 

@@ -57,7 +57,7 @@ executable clock6
     main-is:            Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules:      BigChars
+    other-modules:      BigNums
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
