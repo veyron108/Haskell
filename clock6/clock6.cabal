@@ -69,7 +69,6 @@ executable clock6
         mtl,
         time ^>=1.9.3,
         transformers,
-        split,
         clock6
 
     hs-source-dirs:     src

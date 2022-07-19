@@ -9,7 +9,7 @@ import Data.Time.LocalTime
 import Data.Time.Clock
 import Data.Time.Calendar
 import Data.Time.Format
-import System.Console.ANSI
+import System.Console.ANSI as ANSI
 import System.IO
 import Data.Fixed
 import System.Exit
@@ -25,8 +25,8 @@ type Seconds     = Int
 type DayTime     = (Hours, Minutes, Seconds)
 
 data ClockState = ClockState { 
-    timeOfDay :: (Int, Int, Int), 
-    offset    :: Int
+    timeOfDay :: (Hours, Minutes, Seconds),                   
+    offset    :: Seconds
   } deriving Show
 
 data Event = SecondsEvent | KeyEvent Char deriving Show 
@@ -194,9 +194,12 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-        let offset = 0           -- TODO : need to "get" offset value out of ClockState        
+        let offset = 0            -- TODO : need to "get" offset value out of ClockState 
+                                  -- if I manually type a value here it works       
         setCursorPosition 0 0
         dt <- getDayTime offset
+        -- let theClockState = ClockState { timeOfDay = dt, offset = offset }
+        -- putStrLn $ evalState drawClockState theClockState 
         let theClockState = ClockState { timeOfDay = dt, offset = offset }
         putStrLn $ evalState drawClockState theClockState 
 
@@ -215,7 +218,7 @@ main = do
         
         'x' -> do                                      
           putStrLn "Exit Clock"
-          showCursor
+          ANSI.showCursor
           clearFromCursorToScreenEnd
           exitFailure
 
