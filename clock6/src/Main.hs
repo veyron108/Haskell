@@ -2,18 +2,14 @@ module Main where
 
 import Control.Concurrent
 import Control.Monad.Trans.State
-import Control.Monad.IO.Class
 import Control.Monad
 import Data.List
 import Data.Time.LocalTime
 import Data.Time.Clock
-import Data.Time.Calendar
 import Data.Time.Format
 import System.Console.ANSI as ANSI
 import System.IO
-import Data.Fixed
 import System.Exit
-import System.Directory.Internal.Prelude (exitFailure)
 
 import BigNums
 
@@ -128,10 +124,12 @@ drawClock (h, m, s) = drawClockString output
     output    = join [hours, [colonOn], minutes, [colonOn], seconds, [eol]]  -- "join" the Lists // using Control.Monad                                            
 
 drawClockState :: State ClockState String 
-drawClockState =
-  get >>= \cs ->
-    return $ drawClock (timeOfDay cs) 
-    --return $ drawClock (getClockStateTime cs)         -- no longer need this getter
+drawClockState = do
+    cs <- get
+    let os = offset cs
+    let dt = timeOfDay cs
+    put(cs{timeOfDay = dt, offset = os})
+    return $ drawClock dt
 
 -------------------------------------------------------
 -- Events
@@ -171,7 +169,7 @@ main = do
   putStrLn "Press 'a' to change TimeZone to NZST - Auckland NewZeland"
   setSGR [ SetColor Foreground Vivid Green]
   
-  ics <- initClockState
+  cs <- initClockState                        -- create initial ClockState instance
 
   setCursorPosition 0 0
   --print ics 
@@ -194,14 +192,11 @@ main = do
       -------- TICKER --------
       SecondsEvent  -> do
 
-        let offset = 0            -- TODO : need to "get" offset value out of ClockState 
-                                  -- if I manually type a value here it works       
+        let os = offset cs            -- "get" offset value out of ClockState instance
+                                      -- Note: if I manually type a value here it works       
         setCursorPosition 0 0
-        dt <- getDayTime offset
-        -- let theClockState = ClockState { timeOfDay = dt, offset = offset }
-        -- putStrLn $ evalState drawClockState theClockState 
-        let theClockState = ClockState { timeOfDay = dt, offset = offset }
-        putStrLn $ evalState drawClockState theClockState 
+        dt <- getDayTime os
+        putStrLn $ evalState drawClockState cs{ timeOfDay = dt, offset = os }
 
       ------- KEY EVENTS -------
       KeyEvent c -> case c of 
@@ -223,19 +218,35 @@ main = do
           exitFailure
 
         'e' -> do 
-          -- TODO : need to "set" offset in ClockState to 0
+          -- "set" offset in ClockState to 0
+          setCursorPosition 0 0
+          let os = 0 :: Seconds
+          dt <- getDayTime os
+          putStrLn $ evalState drawClockState cs{ timeOfDay = dt, offset = os }
           return ()
           
         'w' -> do 
-          -- TODO : need to "set" offset in ClockState to (-7200)
+          -- "set" offset in ClockState to (-7200)
+          setCursorPosition 0 0
+          let os = (-7200) :: Seconds
+          dt <- getDayTime os
+          putStrLn $ evalState drawClockState cs{ timeOfDay = dt, offset = os }
           return ()
 
         'c' -> do 
-          -- TODO : need to "set" offset in ClockState to (-1800)
+          -- "set" offset in ClockState to (-1800)
+          setCursorPosition 0 0
+          let os = (-1800) :: Seconds
+          dt <- getDayTime os
+          putStrLn $ evalState drawClockState cs{ timeOfDay = dt, offset = os }
           return ()
 
         'a' -> do 
-          -- TODO : need to "set" offset in ClockState to (43200) - Pacific Auckland NZST
+          -- "set" offset in ClockState to (43200) - Pacific Auckland NZST
+          setCursorPosition 0 0
+          let os = 43200 :: Seconds
+          dt <- getDayTime os
+          putStrLn $ evalState drawClockState cs{ timeOfDay = dt, offset = os }
           return ()
 
         _   -> do 
