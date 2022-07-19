@@ -25,7 +25,7 @@ type Seconds     = Int
 type DayTime     = (Hours, Minutes, Seconds)
 
 data ClockState = ClockState { 
-    timeOfDay :: (Hours, Minutes, Seconds),                   
+    timeOfDay :: DayTime,                   
     offset    :: Seconds
   } deriving Show
 
